@@ -4,6 +4,7 @@
 import os
 import sys
 import subprocess
+import shutil
 import venv
 import hashlib
 from pathlib import Path
@@ -57,8 +58,12 @@ def bootstrap() -> None:
 
     # Re-launch inside the managed venv so every import below resolves against
     # packages we control, regardless of what's on the system Python's path.
+    # subprocess.run (not os.execv) because os.execv's argument quoting is
+    # broken on Windows for paths containing spaces.
     python = str(_venv_python())
-    os.execv(python, [python, str(Path(__file__).resolve())] + sys.argv[1:])
+    script = str(Path(__file__).resolve())
+    result = subprocess.run([python, script] + sys.argv[1:])
+    sys.exit(result.returncode)
 
 
 bootstrap()
@@ -140,8 +145,24 @@ def attach_file_logging(logger: logging.Logger, log_path: Path) -> None:
     logger.addHandler(file_handler)
 
 
+def _find_az() -> str:
+    # shutil.which is PATHEXT-aware on Windows, so it correctly resolves the
+    # "az" command to az.cmd (the Azure CLI's actual installed shim there) —
+    # a raw subprocess.run(["az", ...]) call does not find that on its own.
+    az_path = shutil.which("az")
+    if az_path is None:
+        sys.exit(
+            "Azure CLI ('az') not found on PATH. Install it (see README.md "
+            "'Prerequisites') and open a new terminal, then re-run."
+        )
+    return az_path
+
+
+AZ_CMD = _find_az()
+
+
 def run_az(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["az", *args], capture_output=True, text=True)
+    return subprocess.run([AZ_CMD, *args], capture_output=True, text=True)
 
 
 def check_az_login(logger: logging.Logger) -> dict:
