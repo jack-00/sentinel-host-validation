@@ -188,6 +188,8 @@ def load_environments(path: Path) -> list[dict]:
         missing = required - row.keys()
         if missing:
             sys.exit(f"{path} is missing columns: {sorted(missing)}")
+    if not rows:
+        sys.exit(f"{path} has no client rows filled in yet — add at least one before running.")
     return rows
 
 
@@ -288,6 +290,15 @@ def build_search_query(hostname: str, lookback_days: int) -> str:
     return f'search "{escaped}"\n| where TimeGenerated > ago({lookback_days}d)\n| distinct $table'
 
 
+def _error_summary(exc: Exception) -> str:
+    # exc.message can be None or empty for some AzureError subclasses (seen with
+    # certain network/timeout-level failures) — .splitlines()[0] on an empty
+    # string raises IndexError, which would escape the per-table/per-host
+    # try/except and abort the whole run instead of just skipping one item.
+    text = getattr(exc, "message", None) or str(exc) or exc.__class__.__name__
+    return text.splitlines()[0]
+
+
 def run_seed_pass(client, workspace_id, short_names, lookback_days, logger) -> dict:
     results = {name: {"tables": {}, "found": False} for name in short_names}
     if not short_names:
@@ -300,7 +311,7 @@ def run_seed_pass(client, workspace_id, short_names, lookback_days, logger) -> d
         try:
             response = client.query_workspace(workspace_id, query, timespan=timespan)
         except AzureError as exc:
-            logger.debug(f"  {table}: query failed, skipping ({exc.message.splitlines()[0]})")
+            logger.debug(f"  {table}: query failed, skipping ({_error_summary(exc)})")
             continue
 
         for table_result in response.tables:
@@ -326,7 +337,7 @@ def run_search_fallback(client, workspace_id, missing_short_names, hostname_by_s
         try:
             response = client.query_workspace(workspace_id, query, timespan=timespan)
         except AzureError as exc:
-            logger.debug(f"search fallback failed for {original}: {exc.message.splitlines()[0]}")
+            logger.debug(f"search fallback failed for {original}: {_error_summary(exc)}")
             continue
         for table_result in response.tables:
             for row in table_result.rows:
