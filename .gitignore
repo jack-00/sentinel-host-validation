@@ -1,0 +1,18 @@
+# Self-bootstrapped virtual environment
+.venv/
+
+# Real client data — only the *_template.csv files are meant to be committed
+input/environments.csv
+input/hostlist.csv
+
+# Run output — keep the folder in git via .gitkeep, ignore everything generated into it
+output/*
+!output/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude Code local settings — machine-specific, not shared
+.claude/settings.local.json
+CLAUDE.md

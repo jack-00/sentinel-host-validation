@@ -1,0 +1,11 @@
+# Domains in this environment — list every domain/DNS suffix that applies to this client.
+# Leave the Hostname section below untouched by these lines; the tool skips lines starting with '#'.
+# DOMAIN,example.com
+# DOMAIN,child.example.com
+DOMAIN,example.com
+DOMAIN,corp.example.local
+Hostname,ExpectedOSFamily,ClientNote
+dc01,Windows,Primary domain controller
+dc02,Windows,Secondary domain controller
+websrv01.example.com,Windows,IIS front end
+linux-app01,Linux,"App server, deployed 2025-11"
