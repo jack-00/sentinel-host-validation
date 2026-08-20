@@ -67,11 +67,22 @@ error. See `input/hostlist_template.csv` for the expected shape.
 
 ## Query design
 
-`TABLE_HOST_FIELDS` (near the top of `main.py`) is the seed table matrix —
-table name → which column holds the host identifier in that table. **This
-list is a hypothesis derived from Microsoft's documentation, not yet
-cross-checked against a real, live workspace** (that validation step hasn't
-happened as of this writing — the tool was built without Azure access).
+The seed table matrix — table name → which column holds the host identifier
+in that table — is **not** in `main.py` at all. It's loaded at runtime by
+`load_table_matrix()` from `input/table_matrix.csv`, a file that ships
+committed to the repo (unlike `environments.csv`/`hostlist.csv`, it holds
+no client secrets, so it isn't gitignored). If you're debugging a query
+that references the wrong column, check that CSV before you check the
+code — the code has no table/field knowledge hardcoded into it to go wrong.
+
+That list has been partially validated against a real workspace as of
+2026-08-19 (see the file's `Notes` column for per-row status) — one entry
+(`W3CIISLog`) is a known, currently-unresolved conflict between what a live
+workspace schema showed and what Microsoft's own documentation says; see
+README.md's "Table Selection Methodology" section for the full context.
+Don't assume every row is verified just because some are — check the
+`Notes` column per table.
+
 If a client's workspace doesn't have a table (e.g. no Defender for Identity
 deployed, so no `IdentityLogonEvents`), the query for that table fails and
 is caught/skipped — that's expected, not a bug. If validation results look
@@ -81,7 +92,7 @@ suspiciously empty across the board, the more likely culprit is a wrong
 `run_seed_pass()` runs **one query per table**, checking all hosts in that
 table at once via `where ShortComputer in (...)`, rather than one query per
 host per table — this is deliberate, to keep the number of API calls to
-roughly `len(TABLE_HOST_FIELDS)` instead of `hosts × tables`.
+roughly the row count of `table_matrix.csv` instead of `hosts × tables`.
 
 `run_search_fallback()` only runs for hosts that scored zero hits in the
 seed pass, one Kusto `search "<hostname>"` per host, and lists which tables
@@ -134,10 +145,11 @@ assume.
 
 ## Known gaps / not yet done
 
-- No live testing against a real Sentinel workspace yet — built and
-  designed without Azure access. The seed table matrix, the SDK row-parsing
-  assumption above, and the actual KQL query correctness are all
-  unverified until run against real data.
+- Live testing against a real Sentinel workspace started 2026-08-19. The
+  SDK row-parsing assumption above and the core KQL query shapes have run
+  successfully against real data. The seed table matrix itself is only
+  partially verified — see `input/table_matrix.csv`'s `Notes` column and
+  README.md's "Table Selection Methodology" for current status per table.
 - `resource_group` in `environments.csv` is currently unused by any query
   (only `workspace_id` matters for querying). It's there for future DCR
   inventory work, which will likely need a second resource-group field

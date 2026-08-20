@@ -86,33 +86,6 @@ from azure.monitor.query import LogsQueryClient
 
 DEFAULT_LOOKBACK_DAYS = 7
 
-# Seed hypothesis from Sentinel/Azure Monitor docs research — not yet cross-checked
-# against a live workspace. Validate/correct against real schema before trusting fully.
-TABLE_HOST_FIELDS = {
-    "Heartbeat": "Computer",
-    "Perf": "Computer",
-    "InsightsMetrics": "Computer",
-    "Update": "Computer",
-    "ConfigurationData": "Computer",
-    "SecurityEvent": "Computer",
-    "WindowsEvent": "Computer",
-    "Event": "Computer",
-    "W3CIISLog": "sComputerName",
-    "Syslog": "Computer",
-    "IdentityLogonEvents": "DeviceName",
-    "IdentityDirectoryEvents": "DeviceName",
-    "IdentityQueryEvents": "DeviceName",
-    "DeviceInfo": "DeviceName",
-    "DeviceNetworkInfo": "DeviceName",
-    "DeviceProcessEvents": "DeviceName",
-    "DeviceLogonEvents": "DeviceName",
-    "DeviceFileEvents": "DeviceName",
-    "DeviceRegistryEvents": "DeviceName",
-    "DeviceImageLoadEvents": "DeviceName",
-    "DeviceEvents": "DeviceName",
-    "CommonSecurityLog": "DeviceName",
-}
-
 EXTRA_TABLE_COLUMNS = {
     "Heartbeat": ["OSType", "OSMajorVersion", "OSMinorVersion", "ComputerEnvironment"],
 }
@@ -191,6 +164,34 @@ def load_environments(path: Path) -> list[dict]:
     if not rows:
         sys.exit(f"{path} has no client rows filled in yet — add at least one before running.")
     return rows
+
+
+def load_table_matrix(path: Path) -> dict[str, str]:
+    if not path.exists():
+        sys.exit(
+            f"Missing {path}. This file ships with the repo — restore it from "
+            f"version control, or see README.md 'Table Selection Methodology' "
+            f"to rebuild it."
+        )
+    with path.open(newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    required = {"TableName", "HostField"}
+    for row in rows:
+        missing = required - row.keys()
+        if missing:
+            sys.exit(f"{path} is missing columns: {sorted(missing)}")
+    if not rows:
+        sys.exit(f"{path} has no tables configured — add at least one row before running.")
+
+    table_fields = {}
+    for row in rows:
+        table = row["TableName"].strip()
+        field = row["HostField"].strip()
+        if table and field:
+            table_fields[table] = field
+    if not table_fields:
+        sys.exit(f"{path} has no usable TableName/HostField rows — check for blank values.")
+    return table_fields
 
 
 def pick_environment(envs: list[dict], logger: logging.Logger) -> dict:
@@ -299,13 +300,13 @@ def _error_summary(exc: Exception) -> str:
     return text.splitlines()[0]
 
 
-def run_seed_pass(client, workspace_id, short_names, lookback_days, logger) -> dict:
+def run_seed_pass(client, workspace_id, short_names, lookback_days, table_fields, logger) -> dict:
     results = {name: {"tables": {}, "found": False} for name in short_names}
     if not short_names:
         return results
     timespan = timedelta(days=lookback_days)
 
-    for table, field in TABLE_HOST_FIELDS.items():
+    for table, field in table_fields.items():
         query = build_seed_query(table, field, short_names, lookback_days)
         logger.debug(f"Querying {table}...")
         try:
@@ -419,6 +420,7 @@ def main() -> None:
     parser.add_argument("--lookback-days", type=int, default=DEFAULT_LOOKBACK_DAYS)
     parser.add_argument("--environments", type=Path, default=PROJECT_ROOT / "input" / "environments.csv")
     parser.add_argument("--hostlist", type=Path, default=PROJECT_ROOT / "input" / "hostlist.csv")
+    parser.add_argument("--table-matrix", type=Path, default=PROJECT_ROOT / "input" / "table_matrix.csv")
     args = parser.parse_args()
 
     logger = setup_console_logging(args.debug)
@@ -430,6 +432,8 @@ def main() -> None:
     domains, hosts = load_hostlist(args.hostlist, logger)
     if domains:
         logger.info(f"Domains declared for this environment: {', '.join(domains)}")
+
+    table_fields = load_table_matrix(args.table_matrix)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     run_name = f"{sanitize_for_path(env['organization'])}_{timestamp}"
@@ -459,8 +463,8 @@ def main() -> None:
                 logger.warning(f"Skipping unsafe/empty hostname: {raw!r}")
         short_names = sorted(set(short_names))
 
-        logger.info(f"Seed-list pass across {len(TABLE_HOST_FIELDS)} known tables...")
-        seed_results = run_seed_pass(client, env["workspace_id"], short_names, args.lookback_days, logger)
+        logger.info(f"Seed-list pass across {len(table_fields)} known tables...")
+        seed_results = run_seed_pass(client, env["workspace_id"], short_names, args.lookback_days, table_fields, logger)
 
         missing = [n for n, r in seed_results.items() if not r["found"]]
         search_results: dict = {}

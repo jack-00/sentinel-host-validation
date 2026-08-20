@@ -1,0 +1,23 @@
+TableName,HostField,Category,Notes
+Heartbeat,Computer,Universal,Verified vs Microsoft docs 2026-08-19
+Perf,Computer,Universal,Verified vs Microsoft docs 2026-08-19
+InsightsMetrics,Computer,Universal,Verified vs Microsoft docs 2026-08-19
+Update,Computer,Universal,Verified vs Microsoft docs 2026-08-19
+ConfigurationData,Computer,Universal,Verified vs Microsoft docs 2026-08-19
+SecurityEvent,Computer,Windows,Verified vs Microsoft docs 2026-08-19
+WindowsEvent,Computer,Windows,Verified vs Microsoft docs 2026-08-19
+Event,Computer,Windows,Verified vs Microsoft docs 2026-08-19
+W3CIISLog,sComputerName,Windows,"CONFLICT, unresolved: live workspace schema showed sComputerName, but Microsoft's own table doc lists Computer instead and does not mention sComputerName at all. May be workspace-specific rather than universal -- re-run getschema against this table before trusting it on a new client."
+Syslog,Computer,Linux,Table also has a HostName column as a secondary candidate if Computer is ever missing
+IdentityLogonEvents,DeviceName,Domain Controller / Defender for Identity,Verified vs Microsoft docs 2026-08-19
+IdentityDirectoryEvents,DeviceName,Domain Controller / Defender for Identity,Verified vs Microsoft docs 2026-08-19
+IdentityQueryEvents,DeviceName,Domain Controller / Defender for Identity,Verified vs Microsoft docs 2026-08-19
+DeviceInfo,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+DeviceNetworkInfo,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+DeviceProcessEvents,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+DeviceLogonEvents,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+DeviceFileEvents,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+DeviceRegistryEvents,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+DeviceImageLoadEvents,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+DeviceEvents,DeviceName,Defender for Endpoint,Verified vs Microsoft docs 2026-08-19
+CommonSecurityLog,DeviceName,Vendor / CEF Forwarder,"Field name varies by vendor's CEF mapping in practice -- double check per client. This table also has its own Computer column, but that is the syslog relay/collector host, not the reporting device. Do not substitute Computer for DeviceName here."
