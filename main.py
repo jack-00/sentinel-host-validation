@@ -97,7 +97,7 @@ TABLE_HOST_FIELDS = {
     "SecurityEvent": "Computer",
     "WindowsEvent": "Computer",
     "Event": "Computer",
-    "W3CIISLog": "Computer",
+    "W3CIISLog": "sComputerName",
     "Syslog": "Computer",
     "IdentityLogonEvents": "DeviceName",
     "IdentityDirectoryEvents": "DeviceName",
@@ -119,7 +119,7 @@ EXTRA_TABLE_COLUMNS = {
 
 OUTPUT_FIELDS = [
     "Hostname", "ShortHostname", "ValidationStatus", "TablesFound",
-    "LastLog", "FirstLog", "RecordCount", "ObservedOSType", "ObservedOSVersion",
+    "LastLog", "RecordCount", "ObservedOSType", "ObservedOSVersion",
     "ExpectedOSFamily", "ClientNote", "Notes",
 ]
 
@@ -280,7 +280,7 @@ def build_seed_query(table: str, field: str, short_names: list[str], lookback_da
         f"| where TimeGenerated > ago({lookback_days}d)\n"
         f'| extend ShortComputer = tolower(tostring(split({field}, ".")[0]))\n'
         f"| where ShortComputer in ({name_list})\n"
-        f"| summarize LastLog=max(TimeGenerated), FirstLog=min(TimeGenerated), "
+        f"| summarize LastLog=max(TimeGenerated), "
         f"Count=count(){extra_agg} by ShortComputer"
     )
 
@@ -359,7 +359,6 @@ def build_output_rows(hosts, seed_results, search_results) -> list[dict]:
             "ValidationStatus": False,
             "TablesFound": "",
             "LastLog": "",
-            "FirstLog": "",
             "RecordCount": "",
             "ObservedOSType": "",
             "ObservedOSVersion": "",
@@ -381,10 +380,8 @@ def build_output_rows(hosts, seed_results, search_results) -> list[dict]:
 
         if tables_found:
             last_logs = [r["LastLog"] for r in tables_found.values() if r.get("LastLog")]
-            first_logs = [r["FirstLog"] for r in tables_found.values() if r.get("FirstLog")]
             counts = [r.get("Count", 0) for r in tables_found.values()]
             row["LastLog"] = max(last_logs) if last_logs else ""
-            row["FirstLog"] = min(first_logs) if first_logs else ""
             row["RecordCount"] = sum(counts) if counts else ""
             heartbeat = tables_found.get("Heartbeat")
             if heartbeat:

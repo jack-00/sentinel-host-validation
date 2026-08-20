@@ -166,8 +166,8 @@ output/<ClientOrg>_<timestamp>.zip     ← same contents, zipped for quick downl
 | `ShortHostname` | Normalized short name used for matching |
 | `ValidationStatus` | `True` if found reporting anywhere, `False` if not |
 | `TablesFound` | Every table the host showed up in |
-| `LastLog` / `FirstLog` | Most recent / earliest log seen across matched tables, within the lookback window |
-| `RecordCount` | Total matching records across all tables |
+| `LastLog` | Most recent log seen across matched tables, within the lookback window |
+| `RecordCount` | Total matching records across all tables, within the lookback window |
 | `ObservedOSType` / `ObservedOSVersion` | Pulled from `Heartbeat` if present |
 | `ExpectedOSFamily` / `ClientNote` | Carried straight through from `hostlist.csv`, for comparison |
 | `Notes` | Flags anything worth a manual look (e.g. found only via the search fallback, not the known table matrix) |
